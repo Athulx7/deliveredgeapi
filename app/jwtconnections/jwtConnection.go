@@ -2,8 +2,8 @@ package jwtconnections
 
 import (
 	"errors"
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/revel/revel"
@@ -26,11 +26,14 @@ type JWTClaims struct {
 	CompanyID   int    `json:"company_id"`
 	CompanyName string `json:"company_name"`
 	UserCode    string `json:"user_code"`
+	UserName    string `json:"username"`
+	RoleID      int    `json:"role_id"`
+	RoleName    string `json:"role_name"`
 	DBName      string `json:"db_name"`
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(userID, companyID int, companyName, dbName string, UserCode string) (string, error) {
+func GenerateJWT(userID, companyID int, companyName, dbName, UserCode, UserName string, RoleId int, RoleName string) (string, error) {
 	fmt.Println("Generating JWT for UserID:", userID, "CompanyID:", companyID)
 	if len(jwtKey) == 0 {
 		InitJWTSecret()
@@ -42,6 +45,9 @@ func GenerateJWT(userID, companyID int, companyName, dbName string, UserCode str
 		CompanyName: companyName,
 		DBName:      dbName,
 		UserCode:    UserCode,
+		UserName:    UserName,
+		RoleID:      RoleId,
+		RoleName:    RoleName,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "DeliverEdgeAPI",
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -64,7 +70,7 @@ func ValidateJWT(tokenString string) (*JWTClaims, error) {
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		
+
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
@@ -80,4 +86,18 @@ func ValidateJWT(tokenString string) (*JWTClaims, error) {
 	}
 
 	return claims, nil
+}
+
+func ExtractToken(body map[string]interface{}) (string, error) {
+	rawToken, ok := body["Token"]
+	if !ok {
+		return "", errors.New("Token missing in request")
+	}
+
+	tokenStr, ok := rawToken.(string)
+	if !ok || tokenStr == "" {
+		return "", errors.New("Invalid or empty Token")
+	}
+
+	return tokenStr, nil
 }
